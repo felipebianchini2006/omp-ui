@@ -7,6 +7,15 @@ Interface desktop para o [OMP](https://github.com/can1357/oh-my-pi) no estilo da
 - Modelo, papéis, extensões e skills vêm da configuração do próprio OMP (`~/.omp/agent/config.yml`).
 - A barra lateral lê as sessões de `~/.omp/agent/sessions`, agrupadas por projeto. Abrir uma sessão só lê o arquivo; o processo `omp --resume` sobe quando você envia uma mensagem.
 
+## Logo
+
+A marca usada no ícone e na interface é o logo do [pi](https://pi.dev), baixado do [press kit](https://pi.dev/press-kit) oficial. O OMP é um fork do pi. Este app é um projeto pessoal e não é oficial do pi nem do OMP.
+
+## Requisitos
+
+- macOS com o [`omp`](https://github.com/can1357/oh-my-pi) instalado e logado.
+- Para a fonte Anthropic Sans, o app do Claude instalado em `/Applications/Claude.app`. Sem ele, usa a fonte do sistema. A fonte não vem no repositório.
+
 ## Uso
 
 ```bash

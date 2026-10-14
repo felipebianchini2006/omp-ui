@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from "./Icon.svelte";
   import UsageFooter from "./UsageFooter.svelte";
+  import PiMark from "./PiMark.svelte";
   import { store } from "../lib/store.svelte";
   import type { SessionInfo } from "../lib/bridge";
 
@@ -27,6 +28,7 @@
     <button class="icon-btn" title="Avançar" disabled={!store.canFwd} onclick={() => store.goForward()}>
       <Icon name="right" size={17} />
     </button>
+    <span class="brand" data-tauri-drag-region title={store.info?.ompVersion ?? "OMP"}><PiMark size={13} /></span>
   </div>
 
   <label class="search">
@@ -104,6 +106,13 @@
   .lights {
     width: 70px;
     height: 100%;
+  }
+  .brand {
+    margin-left: auto;
+    padding: 0 6px;
+    display: grid;
+    place-items: center;
+    color: var(--text-3);
   }
   .search {
     margin: 0 8px 4px;

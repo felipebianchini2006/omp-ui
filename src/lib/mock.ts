@@ -3,13 +3,13 @@ import type { AppInfo, SessionInfo } from "./bridge";
 
 const now = Date.now();
 const H = 3600_000;
-const projects = ["_infra", "app-mulheres", "bianchini-method", "conectarmarcearia", "kromahub", "omp-ui"];
+const projects = ["_infra", "api-pagamentos", "site-institucional", "app-mobile", "dashboard", "omp-ui"];
 const titles = [
-  "Análise método Bianchini e escopo",
-  "Fluxo de pequenas mudanças no SDD",
-  "Subfases no roadmap",
-  "Análise de erro no Windows",
-  "BGL comando /executar fase",
+  "Revisar escopo do projeto",
+  "Corrigir erro no login",
+  "Refatorar módulo de pagamentos",
+  "Ajustar build no Windows",
+  "Criar testes de integração",
 ];
 
 const sessions: SessionInfo[] = projects.flatMap((p, pi) =>
@@ -23,7 +23,7 @@ const sessions: SessionInfo[] = projects.flatMap((p, pi) =>
 );
 
 export const appInfo = async (): Promise<AppInfo> => ({
-  user: "Felipe Bianchini",
+  user: "Demo",
   home: "/Users/demo",
   ompPath: "/opt/homebrew/bin/omp",
   ompVersion: "omp/18.10.4",
