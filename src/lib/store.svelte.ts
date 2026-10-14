@@ -27,6 +27,8 @@ export interface Project {
 
 class Store {
   info = $state<AppInfo | null>(null);
+  usage = $state.raw<UsageProvider[]>([]);
+  private usageAt = 0;
   sessions = $state.raw<SessionInfo[]>([]);
   conversations = $state.raw<Conversation[]>([]);
   active = $state<Conversation | null>(null);
@@ -67,6 +69,17 @@ class Store {
     this.info = await api.appInfo();
     await this.refresh();
     this.newDraft();
+    this.loadUsage(true);
+    setInterval(() => this.loadUsage(), 3 * 60_000);
+  }
+
+  /** Uso dos planos via `omp usage --json`. No máximo uma consulta por minuto, salvo `force`. */
+  async loadUsage(force = false) {
+    if (!force && Date.now() - this.usageAt < 60_000) return;
+    this.usageAt = Date.now();
+    try {
+      this.usage = parseUsage(await api.usage());
+    } catch {}
   }
 
   private byKey(key: string) {
@@ -90,6 +103,7 @@ class Store {
       c.onSettled = () => {
         if (this.active !== c) c.unread = true;
         this.refresh();
+        this.loadUsage();
       };
       this.conversations = [...this.conversations, c];
     }
@@ -169,6 +183,49 @@ class Store {
   isUnread(s: SessionInfo) {
     return this.conversations.find((c) => c.sessionId === s.id)?.unread ?? false;
   }
+}
+
+export interface UsageLimit {
+  label: string;
+  used: number; // 0..1
+  resetsAt?: number;
+}
+
+export interface UsageProvider {
+  id: string;
+  name: string;
+  plan?: string;
+  limits: UsageLimit[];
+  peak: number; // janela mais consumida, 0..1
+}
+
+const PROVIDER_NAMES: Record<string, string> = {
+  anthropic: "Claude",
+  "openai-codex": "Codex",
+  openai: "OpenAI",
+  "xai-oauth": "Grok",
+  xai: "Grok",
+  "google-gemini-cli": "Gemini",
+  google: "Gemini",
+  "github-copilot": "Copilot",
+};
+
+export function parseUsage(raw: any): UsageProvider[] {
+  const byId = new Map<string, UsageProvider>();
+  for (const r of raw?.reports ?? []) {
+    const id = String(r.provider ?? "");
+    const p: UsageProvider = byId.get(id) ?? { id, name: PROVIDER_NAMES[id] ?? id, plan: r.metadata?.planType, limits: [], peak: 0 };
+    for (const l of r.limits ?? []) {
+      const used = Number(l.amount?.usedFraction ?? (l.amount?.limit ? l.amount.used / l.amount.limit : 0));
+      if (!Number.isFinite(used)) continue;
+      // O provedor repete o nome no rótulo ("Claude 5 Hour"); fica só a janela.
+      const label = String(l.label ?? l.window?.label ?? "").replace(new RegExp(`^${p.name}\\s+`, "i"), "");
+      p.limits.push({ label, used, resetsAt: l.window?.resetsAt });
+      p.peak = Math.max(p.peak, used);
+    }
+    byId.set(id, p);
+  }
+  return [...byId.values()].filter((p) => p.limits.length);
 }
 
 export function basename(p: string) {

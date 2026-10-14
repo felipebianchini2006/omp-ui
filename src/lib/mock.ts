@@ -33,26 +33,55 @@ export const appInfo = async (): Promise<AppInfo> => ({
 export const listSessions = async () => sessions;
 
 export const readSession = async (_path: string) => [
-  { role: "user", content: [{ type: "text", text: "Leia o README e rode os testes." }] },
+  { role: "user", content: [{ type: "text", text: "Corrija o título das sessões e rode os testes." }] },
   {
     role: "assistant",
     model: "claude-opus-5-5",
     content: [
-      { type: "thinking", thinking: "Vou ler o README primeiro." },
-      { type: "text", text: "Vou ler o README e rodar a suíte." },
-      { type: "toolCall", id: "t1", name: "read", arguments: { path: "README.md" }, intent: "Lendo README" },
-      { type: "toolCall", id: "t2", name: "bash", arguments: { command: "cargo test" }, intent: "Rodando testes" },
+      { type: "toolCall", id: "t0", name: "todo", arguments: { op: "init", items: [] } },
     ],
   },
-  { role: "toolResult", toolCallId: "t1", content: [{ type: "text", text: "# Projeto\n\nDescrição." }] },
-  { role: "toolResult", toolCallId: "t2", content: [{ type: "text", text: "test result: ok. 12 passed" }] },
+  {
+    role: "toolResult",
+    toolCallId: "t0",
+    content: [{ type: "text", text: "ok" }],
+    details: { phases: [{ name: "Tasks", tasks: [
+      { content: "Localizar onde o título é lido", status: "completed" },
+      { content: "Remover ícones Nerd Font do título", status: "in_progress" },
+      { content: "Rodar cargo test", status: "pending" },
+    ] }] },
+  },
+  {
+    role: "assistant",
+    model: "claude-opus-5-5",
+    content: [
+      { type: "text", text: "Vou localizar onde o título é montado." },
+      { type: "toolCall", id: "t1", name: "grep", arguments: { pattern: "title", path: "src-tauri/src", i: "Procurando leitura do título" } },
+      { type: "toolCall", id: "t2", name: "read", arguments: { path: "src-tauri/src/sessions.rs", i: "Lendo sessions.rs" } },
+      { type: "toolCall", id: "t3", name: "edit", arguments: { input: "[src-tauri/src/sessions.rs#A1B2]\n...", i: "Filtrando glifos" } },
+    ],
+  },
+  { role: "toolResult", toolCallId: "t1", content: [{ type: "text", text: "..." }], details: { matchCount: 7, fileCount: 2, fileMatches: [{ path: "src-tauri/src/sessions.rs", count: 6 }, { path: "src-tauri/src/lib.rs", count: 1 }] } },
+  { role: "toolResult", toolCallId: "t2", content: [{ type: "text", text: "1:use serde::Serialize;" }], details: { totalLines: 172 } },
+  {
+    role: "toolResult",
+    toolCallId: "t3",
+    content: [{ type: "text", text: "ok" }],
+    details: { diff: " 71|    let title = title\n-72|        .filter(|t| !t.trim().is_empty())\n+72|        .map(|t| strip_private_glyphs(&t))\n+73|        .filter(|t| !t.is_empty())\n 74|        .unwrap_or_else(|| first_prompt.chars().take(80).collect());" },
+  },
+  {
+    role: "assistant",
+    model: "claude-opus-5-5",
+    content: [{ type: "toolCall", id: "t4", name: "bash", arguments: { command: "cargo test", i: "Rodando testes" } }],
+  },
+  { role: "toolResult", toolCallId: "t4", content: [{ type: "text", text: "running 3 tests\ntest sessions::tests::segue_ramo_ativo ... ok\ntest tests::omp_rpc_responde ... ok\n\ntest result: ok. 3 passed; 0 failed" }], details: { wallTimeMs: 2380 } },
   {
     role: "assistant",
     model: "claude-opus-5-5",
     content: [
       {
         type: "text",
-        text: "Pronto. Os **12 testes** passaram.\n\n- `sessions.rs` cobre o ramo ativo\n- o build está limpo\n\n```rust\nfn main() {\n    println!(\"ok\");\n}\n```",
+        text: "Pronto. Os **3 testes** passaram.\n\n- `sessions.rs` agora remove os glifos\n- o build está limpo\n\n```rust\nfn strip_private_glyphs(s: &str) -> String {\n    s.chars().filter(|c| !matches!(*c as u32, 0xE000..=0xF8FF)).collect()\n}\n```",
       },
     ],
   },
@@ -138,3 +167,18 @@ export const claudeFont = async (kind: string): Promise<ArrayBuffer> => {
   if (!r.ok) throw new Error(url);
   return r.arrayBuffer();
 };
+
+const lim = (id: string, label: string, used: number, inMs: number) => ({
+  id,
+  label,
+  window: { resetsAt: Date.now() + inMs },
+  amount: { usedFraction: used },
+  status: used >= 1 ? "exhausted" : "ok",
+});
+export const usage = async () => ({
+  reports: [
+    { provider: "anthropic", limits: [lim("a:5h", "Claude 5 Hour", 0.14, 2.7 * H), lim("a:7d", "Claude 7 Day", 0.79, 67 * H), lim("a:7d:f", "Claude 7 Day (Fable)", 0.16, 67 * H)], metadata: {} },
+    { provider: "openai-codex", limits: [lim("o:7d", "7 days", 0.2, 147 * H)], metadata: { planType: "pro" } },
+    { provider: "xai-oauth", limits: [lim("x:1w", "SuperGrok Weekly Credits", 0, 33 * H)], metadata: {} },
+  ],
+});

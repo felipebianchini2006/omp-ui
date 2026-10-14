@@ -67,7 +67,7 @@
     text;
     if (!ta) return;
     ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 320) + "px";
+    ta.style.height = Math.min(ta.scrollHeight, 280) + "px";
   });
 
   $effect(() => {
@@ -226,26 +226,25 @@
       </div>
     {/if}
 
-    <textarea
-      bind:this={ta}
-      bind:value={text}
-      rows="1"
-      class="selectable"
-      placeholder={conv.busy ? "Enviar mensagem durante a execução…" : "Descreva uma tarefa ou digite / para comandos"}
-      spellcheck="false"
-      onkeydown={onKey}
-      oncompositionstart={() => (composing = true)}
-      oncompositionend={() => (composing = false)}
-      onpaste={onPaste}></textarea>
-
-    <div class="box-foot">
+    <div class="input-row">
+      <textarea
+        bind:this={ta}
+        bind:value={text}
+        rows="1"
+        class="selectable"
+        placeholder={conv.busy ? "Enviar mensagem durante a execução…" : "Descreva uma tarefa ou digite / para comandos"}
+        spellcheck="false"
+        onkeydown={onKey}
+        oncompositionstart={() => (composing = true)}
+        oncompositionend={() => (composing = false)}
+        onpaste={onPaste}></textarea>
       {#if conv.busy}
         <button class="send stop" title="Parar (Esc)" onclick={() => conv.abort()}>
-          <Icon name="stop" size={14} />
+          <Icon name="stop" size={12} />
         </button>
       {:else}
         <button class="send" class:ready={canSend} title="Enviar (Enter)" disabled={!canSend} onclick={submit}>
-          <Icon name="return" size={16} />
+          <Icon name="return" size={15} />
         </button>
       {/if}
     </div>
@@ -254,7 +253,7 @@
   <div class="row">
     <div class="left">
       <button class="icon-btn" title="Anexar imagem" onclick={() => fileInput?.click()}>
-        <Icon name="plus" size={17} />
+        <Icon name="plus" size={16} />
       </button>
       <input
         bind:this={fileInput}
@@ -313,26 +312,26 @@
 <style>
   .composer-wrap {
     width: 100%;
-    max-width: 768px;
+    max-width: 720px;
     margin: 0 auto;
   }
   .chips {
     display: flex;
     gap: 6px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
   .anchor {
     position: relative;
   }
   .chip {
-    height: 30px;
+    height: 28px;
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    padding: 0 10px 0 9px;
+    gap: 6px;
+    padding: 0 9px 0 8px;
     border-radius: 7px;
     background: var(--bg-chip);
-    font-size: var(--fs-body);
+    font-size: 13px;
     color: var(--text-2);
   }
   .chip :global(svg) {
@@ -370,43 +369,45 @@
     position: relative;
     background: var(--bg-composer);
     border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 13px 12px 8px 15px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    border-radius: 12px;
+    padding: 9px 8px 9px 13px;
     transition: border-color 0.15s;
+  }
+  .input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
   }
   .box:focus-within {
     border-color: var(--border-strong);
   }
   textarea {
     display: block;
-    width: 100%;
-    min-height: 52px;
+    flex: 1;
+    min-width: 0;
+    min-height: 42px;
     resize: none;
     border: 0;
     outline: 0;
     background: none;
-    font-size: var(--fs-prose);
-    line-height: 1.55;
+    font-size: var(--fs-body);
+    line-height: 21px;
+    margin: 2px 0;
     color: var(--text);
     padding: 0;
     caret-color: var(--text);
   }
   .compact textarea {
-    min-height: 24px;
+    min-height: 21px;
   }
   textarea::placeholder {
     color: var(--text-4);
   }
-  .box-foot {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 2px;
-  }
   .send {
-    width: 28px;
-    height: 28px;
-    border-radius: 7px;
+    flex: none;
+    width: 25px;
+    height: 25px;
+    border-radius: 6px;
     display: grid;
     place-items: center;
     color: var(--text-4);
@@ -422,8 +423,8 @@
     background: var(--text);
     color: var(--bg-main);
     border-radius: 50%;
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
   }
   .slash {
     left: 0;
@@ -481,9 +482,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 8px;
-    padding: 0 4px 0 2px;
-    min-height: 28px;
+    margin-top: 5px;
+    padding: 0 2px 0 0;
+    min-height: 26px;
   }
   .left,
   .right {
@@ -501,9 +502,9 @@
   }
   .model,
   .effort {
-    font-size: var(--fs-body);
+    font-size: 13px;
     color: var(--text-2);
-    padding: 3px 7px;
+    padding: 3px 6px;
     border-radius: 6px;
     white-space: nowrap;
   }

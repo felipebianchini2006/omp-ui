@@ -33,6 +33,7 @@ export const api = {
   sendAgent: (key: string, line: string): Promise<void> =>
     inTauri ? invoke("send_agent", { key, line }) : mock.sendAgent(key, line),
   stopAgent: (key: string): Promise<void> => (inTauri ? invoke("stop_agent", { key }) : Promise.resolve()),
+  usage: (): Promise<any> => (inTauri ? invoke("omp_usage") : mock.usage()),
   pickFolder: async (defaultPath?: string): Promise<string | null> => {
     if (!inTauri) return "/Users/demo/Developer/novo-projeto";
     const r = await open({ directory: true, multiple: false, defaultPath });

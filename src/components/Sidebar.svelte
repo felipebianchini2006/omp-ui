@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from "./Icon.svelte";
+  import UsageFooter from "./UsageFooter.svelte";
   import { store } from "../lib/store.svelte";
   import type { SessionInfo } from "../lib/bridge";
 
@@ -8,8 +9,6 @@
 
   const activeId = $derived(store.active?.sessionId ?? null);
   const draftActive = $derived(store.active?.isDraft ?? false);
-  const version = $derived(store.info?.ompVersion.replace(/^omp\//, "OMP ") ?? "");
-  const user = $derived(store.info?.user ?? "");
 
   function visible(list: SessionInfo[], cwd: string) {
     return expanded[cwd] || store.search ? list : list.slice(0, PAGE);
@@ -80,11 +79,7 @@
     {/each}
   </div>
 
-  <div class="footer">
-    <span class="avatar">{(user[0] ?? "?").toUpperCase()}</span>
-    <span class="who">{user.split(" ")[0]}</span>
-    {#if version}<span class="ver">· {version}</span>{/if}
-  </div>
+  <UsageFooter />
 </aside>
 
 <style>
@@ -253,29 +248,5 @@
     color: var(--text-3);
     font-size: var(--fs-footnote);
     padding: 8px 12px;
-  }
-  .footer {
-    height: 52px;
-    flex: none;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 0 16px;
-    font-size: var(--fs-body);
-  }
-  .avatar {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--bg-chip);
-    display: grid;
-    place-items: center;
-    font-size: 11px;
-    font-weight: var(--wght-medium);
-    color: var(--text-2);
-  }
-  .ver {
-    color: var(--text-3);
-    font-size: var(--fs-footnote);
   }
 </style>

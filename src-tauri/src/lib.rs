@@ -237,6 +237,26 @@ async fn app_info() -> AppInfo {
     }
 }
 
+/// Uso dos planos conectados no OMP (`omp usage --json`): limites por provedor e janela.
+#[tauri::command]
+async fn omp_usage() -> Result<serde_json::Value, String> {
+    usage_json()
+}
+
+fn usage_json() -> Result<serde_json::Value, String> {
+    let mut cmd = Command::new(omp_bin());
+    cmd.args(["usage", "--json"]).stdin(Stdio::null()).stderr(Stdio::null());
+    let env = login_env();
+    if !env.is_empty() {
+        cmd.env_clear().envs(env.iter().map(|(k, v)| (k, v)));
+    }
+    let out = cmd.output().map_err(|e| e.to_string())?;
+    if !out.status.success() {
+        return Err(format!("omp usage saiu com {}", out.status));
+    }
+    serde_json::from_slice(&out.stdout).map_err(|e| e.to_string())
+}
+
 const CLAUDE_RES: &str = "/Applications/Claude.app/Contents/Resources";
 
 /// Lê uma fonte do Claude.app instalado na máquina (não é empacotada no OMP UI).
@@ -309,7 +329,8 @@ pub fn run() {
             app_info,
             list_sessions,
             read_session,
-            claude_font
+            claude_font,
+            omp_usage
         ])
         .build(tauri::generate_context!())
         .expect("falha ao montar o app");
@@ -351,6 +372,14 @@ mod tests {
         }
         let _ = child.kill();
         assert!(ready && state);
+    }
+
+    #[test]
+    #[ignore]
+    fn omp_usage_traz_limites_por_provedor() {
+        let v = usage_json().unwrap();
+        let reports = v["reports"].as_array().unwrap();
+        assert!(reports.iter().any(|r| r["limits"][0]["amount"]["usedFraction"].is_number()));
     }
 
     #[test]

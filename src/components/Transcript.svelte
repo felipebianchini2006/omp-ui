@@ -34,7 +34,11 @@
       } else if (msg.role === "assistant") {
         const blocks = Array.isArray(msg.content) ? msg.content : [];
         blocks.forEach((b: any, bi: number) => {
-          if (b.type === "toolCall") {
+          if (b.type === "toolCall" && (b.name === "todo" || b.name === "ask")) {
+            // Plano e perguntas ficam sempre visíveis, fora de grupos recolhidos.
+            group = null;
+            out.push({ kind: "tools", id: `${id}:${bi}`, entries: [{ kind: "tool", call: b }] });
+          } else if (b.type === "toolCall") {
             if (!group) {
               group = { kind: "tools", id: `${id}:${bi}`, entries: [] };
               out.push(group);
@@ -135,7 +139,7 @@
     min-height: 0;
   }
   .column {
-    max-width: 768px;
+    max-width: 720px;
     margin: 0 auto;
     padding: 20px 28px 28px;
   }
