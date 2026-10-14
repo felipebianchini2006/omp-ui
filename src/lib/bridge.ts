@@ -57,3 +57,21 @@ export async function onAgentExit(fn: ExitHandler) {
   if (!inTauri) return;
   await listen<{ key: string; code: number | null }>("omp-exit", (e) => fn(e.payload.key, e.payload.code));
 }
+
+/** Usa a Anthropic Sans/Mono do Claude.app instalado, se existir. Senão fica a fonte do sistema. */
+export async function loadClaudeFonts() {
+  const faces: [string, string, string][] = [
+    ["sans", "anthropic-sans", "normal"],
+    ["sans-italic", "anthropic-sans", "italic"],
+    ["mono", "anthropic-mono", "normal"],
+  ];
+  await Promise.all(
+    faces.map(async ([kind, family, style]) => {
+      try {
+        const data: ArrayBuffer = inTauri ? await invoke("claude_font", { kind }) : await mock.claudeFont(kind);
+        const face = new FontFace(family, data, { weight: "300 800", style });
+        document.fonts.add(await face.load());
+      } catch {}
+    }),
+  );
+}

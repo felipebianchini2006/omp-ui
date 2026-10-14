@@ -237,6 +237,52 @@ async fn app_info() -> AppInfo {
     }
 }
 
+const CLAUDE_RES: &str = "/Applications/Claude.app/Contents/Resources";
+
+/// Lê uma fonte do Claude.app instalado na máquina (não é empacotada no OMP UI).
+/// `kind`: "sans", "sans-italic" ou "mono".
+#[tauri::command]
+async fn claude_font(kind: String) -> Result<tauri::ipc::Response, String> {
+    let res = PathBuf::from(CLAUDE_RES);
+    let path = match kind.as_str() {
+        "sans" | "sans-italic" => {
+            let prefix = if kind == "sans" { "AnthropicSans-Romans" } else { "AnthropicSans-Italics" };
+            std::fs::read_dir(res.join("fonts"))
+                .map_err(|e| e.to_string())?
+                .flatten()
+                .map(|e| e.path())
+                .find(|p| p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with(prefix)))
+        }
+        "mono" => find_css_font(&res.join("ion-dist/assets/v1"), "anthropic-mono"),
+        _ => None,
+    }
+    .ok_or("fonte do Claude não encontrada")?;
+    std::fs::read(path).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
+}
+
+/// Procura `@font-face{font-family:<family>;src:url(/assets/v1/<arquivo>)...font-style:normal` nos CSS.
+fn find_css_font(dir: &std::path::Path, family: &str) -> Option<PathBuf> {
+    let needle = format!("font-family:{family};src:url(/assets/v1/");
+    for entry in std::fs::read_dir(dir).ok()?.flatten() {
+        let p = entry.path();
+        if p.extension().and_then(|e| e.to_str()) != Some("css") {
+            continue;
+        }
+        let Ok(css) = std::fs::read_to_string(&p) else { continue };
+        let mut rest = css.as_str();
+        while let Some(i) = rest.find(&needle) {
+            let after = &rest[i + needle.len()..];
+            let end = after.find(')')?;
+            let face_end = after.find('}').unwrap_or(after.len());
+            if after[..face_end].contains("font-style:normal") {
+                return Some(dir.join(&after[..end]));
+            }
+            rest = &after[end..];
+        }
+    }
+    None
+}
+
 #[tauri::command]
 async fn list_sessions() -> Vec<sessions::SessionInfo> {
     sessions::list(&home().join(".omp/agent/sessions"))
@@ -262,7 +308,8 @@ pub fn run() {
             stop_agent,
             app_info,
             list_sessions,
-            read_session
+            read_session,
+            claude_font
         ])
         .build(tauri::generate_context!())
         .expect("falha ao montar o app");
@@ -304,5 +351,12 @@ mod tests {
         }
         let _ = child.kill();
         assert!(ready && state);
+    }
+
+    #[test]
+    #[ignore]
+    fn acha_fonte_mono_do_claude() {
+        let p = find_css_font(&PathBuf::from(CLAUDE_RES).join("ion-dist/assets/v1"), "anthropic-mono").unwrap();
+        assert!(p.is_file(), "{p:?}");
     }
 }

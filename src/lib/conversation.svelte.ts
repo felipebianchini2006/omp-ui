@@ -22,6 +22,17 @@ export interface SlashCommand {
   name: string;
   description?: string;
   hint?: string;
+  subcommands?: { name: string; description?: string }[];
+}
+
+const COMMANDS_CACHE = "omp-ui:commands";
+
+function cachedCommands(): SlashCommand[] {
+  try {
+    return JSON.parse(localStorage.getItem(COMMANDS_CACHE) ?? "[]");
+  } catch {
+    return [];
+  }
 }
 
 export interface ModelInfo {
@@ -30,6 +41,8 @@ export interface ModelInfo {
   provider: string;
   efforts: string[];
 }
+
+export type GroupEntry = { kind: "tool"; call: any } | { kind: "thinking"; text: string };
 
 export interface Attachment {
   name: string;
@@ -41,7 +54,7 @@ let seq = 0;
 const newKey = () => `c${Date.now().toString(36)}${(seq++).toString(36)}`;
 
 export class Conversation {
-  key: string;
+  key = $state("");
   cwd = $state("");
   path = $state<string | null>(null);
   sessionId = $state<string | null>(null);
@@ -63,10 +76,11 @@ export class Conversation {
   contextPercent = $state<number | null>(null);
   statuses = $state<Record<string, string>>({});
   uiRequests = $state<UiRequest[]>([]);
-  commands = $state<SlashCommand[]>([]);
+  commands = $state.raw<SlashCommand[]>(cachedCommands());
   unread = $state(false);
 
   private reqSeq = 0;
+  private localUserId: string | null = null;
   private pending = new Map<string, (r: any) => void>();
   private ready: Promise<void> | null = null;
   private markReady: (() => void) | null = null;
@@ -82,7 +96,8 @@ export class Conversation {
   }
 
   get isDraft() {
-    return !this.path && !this.sessionId && this.messages.length === 0 && !this.pendingPrompt;
+    // Não depende de sessionId: o omp pode subir antes (ex.: ao digitar "/") sem virar sessão.
+    return !this.path && this.messages.length === 0 && !this.pendingPrompt;
   }
 
   async load() {
@@ -124,6 +139,16 @@ export class Conversation {
     return this.ready;
   }
 
+  /** Encerra o processo atual (ex.: trocou a pasta do rascunho). Uma chave nova isola eventos atrasados. */
+  stop() {
+    if (!this.running) return;
+    api.stopAgent(this.key);
+    this.key = newKey();
+    this.running = false;
+    this.ready = null;
+    this.busy = false;
+  }
+
   private write(cmd: Record<string, any>) {
     return api.sendAgent(this.key, JSON.stringify(cmd));
   }
@@ -143,11 +168,18 @@ export class Conversation {
     const message = text.trim();
     if (!message && images.length === 0) return;
     const imgs = images.map((i) => ({ type: "image", data: i.data, mimeType: i.mimeType }));
-    if (this.busy) {
+    const isCommand = message.startsWith("/");
+    if (this.busy && !isCommand) {
       await this.request("steer", { message, ...(imgs.length ? { images: imgs } : {}) });
       return;
     }
-    this.pendingPrompt = message;
+    if (isCommand) {
+      // Comandos não geram message_start do usuário; mostramos a linha digitada na hora.
+      this.localUserId = `local${++this.reqSeq}`;
+      this.messages = [...this.messages, { id: this.localUserId, msg: { role: "user", content: message } }];
+    } else {
+      this.pendingPrompt = message;
+    }
     this.busy = true;
     try {
       await this.ensureRunning();
@@ -161,6 +193,11 @@ export class Conversation {
       this.error = r.error ?? "Falha ao enviar o prompt";
       this.busy = false;
       this.pendingPrompt = null;
+    } else if (r?.data?.agentInvoked === false) {
+      // Comando local do OMP: não há turno do agente, então não chega session_settled.
+      this.busy = false;
+      this.localUserId = null;
+      this.onSettled?.();
     }
   }
 
@@ -260,7 +297,14 @@ export class Conversation {
           name: c.name,
           description: c.description,
           hint: c.input?.hint,
+          subcommands: c.subcommands?.map((x: any) => ({ name: x.name, description: x.description })),
         }));
+        try {
+          localStorage.setItem(COMMANDS_CACHE, JSON.stringify(this.commands));
+        } catch {}
+        break;
+      case "command_output":
+        if (ev.text) this.note(ev.text);
         break;
       case "prompt_result":
         if (ev.status === "error" && ev.error?.message) this.error = ev.error.message;
@@ -286,8 +330,16 @@ export class Conversation {
       this.results = { ...this.results, [msg.toolCallId]: msg };
       return;
     }
-    if (msg.role === "user") this.pendingPrompt = null;
-    const key = id ?? `m${this.messages.length}`;
+    let key = id ?? `m${this.messages.length}`;
+    if (msg.role === "user") {
+      this.pendingPrompt = null;
+      // Comando que virou prompt (ex.: skills): troca a linha local pela mensagem real.
+      if (this.localUserId) {
+        const local = this.messages.findIndex((m) => m.id === this.localUserId);
+        this.localUserId = null;
+        if (local >= 0) this.messages = this.messages.map((m, j) => (j === local ? { id: key, msg } : m));
+      }
+    }
     const i = this.messages.findIndex((m) => m.id === key);
     const next = this.messages.slice();
     if (i >= 0) next[i] = { id: key, msg };
@@ -295,8 +347,15 @@ export class Conversation {
     this.messages = next;
   }
 
+  private note(text: string, level?: string) {
+    this.messages = [...this.messages, { id: `note${++this.reqSeq}`, msg: { role: "command", content: text, level } }];
+  }
+
   private handleUi(ev: any) {
     switch (ev.method) {
+      case "notify":
+        if (ev.message) this.note(ev.message, ev.notifyType);
+        break;
       case "setStatus":
         if (ev.statusText) this.statuses[ev.statusKey] = ev.statusText;
         else delete this.statuses[ev.statusKey];

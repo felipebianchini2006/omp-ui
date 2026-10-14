@@ -28,11 +28,27 @@
   const modelName = $derived(conv.model?.name ? shortName(conv.model.name) : prettyModel(store.info?.defaultModel ?? ""));
   const efforts = $derived(["auto", ...(conv.model?.efforts?.length ? conv.model.efforts : ["low", "medium", "high", "xhigh", "max"]), "off"]);
   const effortLabel = $derived(EFFORT_LABEL[conv.thinkingLevel] ?? (conv.thinkingLevel || "Automático"));
-  const slashMatches = $derived.by(() => {
+  type SlashItem = { label: string; insert: string; hint?: string; desc?: string };
+  const slashMatches = $derived.by((): SlashItem[] => {
+    const sub = text.match(/^\/(\S+) (\S*)$/);
+    if (sub) {
+      const cmd = conv.commands.find((c) => c.name === sub[1]);
+      const q = sub[2].toLowerCase();
+      return (cmd?.subcommands ?? [])
+        .filter((x) => x.name.toLowerCase().startsWith(q) && x.name !== sub[2])
+        .map((x) => ({ label: `/${cmd!.name} ${x.name}`, insert: `/${cmd!.name} ${x.name}`, desc: x.description }));
+    }
     const m = text.match(/^\/(\S*)$/);
     if (!m) return [];
     const q = m[1].toLowerCase();
-    return conv.commands.filter((c) => c.name.toLowerCase().startsWith(q)).slice(0, 12);
+    const starts = conv.commands.filter((c) => c.name.toLowerCase().startsWith(q));
+    const contains = q ? conv.commands.filter((c) => !starts.includes(c) && c.name.toLowerCase().includes(q)) : [];
+    return [...starts, ...contains].slice(0, 50).map((c) => ({
+      label: `/${c.name}`,
+      insert: `/${c.name}${c.hint || c.subcommands?.length ? " " : ""}`,
+      hint: c.hint,
+      desc: c.description,
+    }));
   });
   const canSend = $derived(text.trim().length > 0 || images.length > 0);
   const ring = $derived(Math.min(100, Math.max(0, conv.contextPercent ?? 0)));
@@ -59,6 +75,11 @@
     slashIndex = 0;
   });
 
+  $effect(() => {
+    // Sem lista de comandos ainda: sobe o omp para ele anunciar os comandos disponíveis.
+    if (text.startsWith("/") && conv.commands.length === 0 && !conv.running) conv.ensureRunning().catch(() => {});
+  });
+
   async function submit() {
     if (!canSend) return;
     const t = text;
@@ -77,9 +98,14 @@
         slashIndex = (slashIndex + d + slashMatches.length) % slashMatches.length;
         return;
       }
-      if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey && text !== "/" + slashMatches[slashIndex].name)) {
+      if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey && text.trimEnd() !== slashMatches[slashIndex].insert.trimEnd())) {
         e.preventDefault();
-        pickSlash(slashMatches[slashIndex].name);
+        pickSlash(slashMatches[slashIndex].insert);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        text = "";
         return;
       }
     }
@@ -91,10 +117,16 @@
     }
   }
 
-  function pickSlash(name: string) {
-    text = `/${name} `;
+  function pickSlash(insert: string) {
+    text = insert;
     ta?.focus();
   }
+
+  $effect(() => {
+    // Mantém o item destacado visível ao navegar com as setas.
+    slashIndex;
+    document.querySelector(".slash .menu-item.on")?.scrollIntoView({ block: "nearest" });
+  });
 
   function readFile(f: File): Promise<Attachment> {
     return new Promise((res, rej) => {
@@ -164,11 +196,18 @@
   <div class="box" class:busy={conv.busy} class:compact={!conv.isDraft}>
     {#if slashMatches.length}
       <div class="menu slash" role="listbox">
-        {#each slashMatches as c, i (c.name)}
-          <button class="menu-item" class:on={i === slashIndex} onmousedown={(e) => { e.preventDefault(); pickSlash(c.name); }}>
-            <span class="cmd">/{c.name}</span>
+        {#each slashMatches as c, i (c.label)}
+          <button
+            class="menu-item"
+            class:on={i === slashIndex}
+            onmousemove={() => (slashIndex = i)}
+            onmousedown={(e) => {
+              e.preventDefault();
+              pickSlash(c.insert);
+            }}>
+            <span class="cmd">{c.label}</span>
             {#if c.hint}<span class="dim">{c.hint}</span>{/if}
-            <span class="desc">{c.description ?? ""}</span>
+            <span class="desc">{c.desc ?? ""}</span>
           </button>
         {/each}
       </div>
@@ -274,12 +313,12 @@
 <style>
   .composer-wrap {
     width: 100%;
-    max-width: 760px;
+    max-width: 768px;
     margin: 0 auto;
   }
   .chips {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     margin-bottom: 10px;
   }
   .anchor {
@@ -290,16 +329,18 @@
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    padding: 0 10px;
+    padding: 0 10px 0 9px;
     border-radius: 7px;
     background: var(--bg-chip);
-    border: 1px solid var(--border-soft);
-    font-size: 14px;
+    font-size: var(--fs-body);
     color: var(--text-2);
   }
-  button.chip:not(.static):hover {
-    background: var(--bg-active);
+  .chip :global(svg) {
+    color: var(--text-3);
+  }
+  button.chip:hover {
     color: var(--text);
+    background: color-mix(in srgb, var(--bg-chip) 80%, white 8%);
   }
   .menu.up {
     bottom: calc(100% + 6px);
@@ -309,7 +350,7 @@
   .menu.up.right-align {
     left: auto;
     right: 0;
-    min-width: 200px;
+    min-width: 210px;
   }
   .grow {
     flex: 1;
@@ -318,37 +359,38 @@
     white-space: nowrap;
   }
   .dim {
-    color: var(--text-4);
-    font-size: 12px;
+    color: var(--text-3);
+    font-size: var(--fs-footnote);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 160px;
+    max-width: 180px;
   }
   .box {
     position: relative;
     background: var(--bg-composer);
     border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 14px 14px 10px 16px;
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+    padding: 13px 12px 8px 15px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
     transition: border-color 0.15s;
   }
   .box:focus-within {
-    border-color: #3a3a37;
+    border-color: var(--border-strong);
   }
   textarea {
     display: block;
     width: 100%;
-    min-height: 48px;
+    min-height: 52px;
     resize: none;
     border: 0;
     outline: 0;
     background: none;
-    font-size: 15.5px;
+    font-size: var(--fs-prose);
     line-height: 1.55;
     color: var(--text);
     padding: 0;
+    caret-color: var(--text);
   }
   .compact textarea {
     min-height: 24px;
@@ -359,43 +401,45 @@
   .box-foot {
     display: flex;
     justify-content: flex-end;
-    margin-top: 4px;
+    margin-top: 2px;
   }
   .send {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
     display: grid;
     place-items: center;
     color: var(--text-4);
   }
   .send.ready {
-    color: var(--text);
+    color: var(--text-2);
   }
   .send.ready:hover {
     background: var(--bg-hover);
+    color: var(--text);
   }
   .send.stop {
     background: var(--text);
     color: var(--bg-main);
     border-radius: 50%;
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
   }
   .slash {
     left: 0;
     right: 0;
     bottom: calc(100% + 6px);
+    max-height: 320px;
   }
   .cmd {
     font-family: var(--mono);
-    font-size: 13px;
+    font-size: var(--fs-code);
     color: var(--text);
     white-space: nowrap;
   }
   .desc {
     color: var(--text-3);
-    font-size: 12.5px;
+    font-size: var(--fs-footnote);
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -410,8 +454,8 @@
   }
   .thumb {
     position: relative;
-    width: 64px;
-    height: 64px;
+    width: 60px;
+    height: 60px;
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid var(--border);
@@ -438,27 +482,28 @@
     justify-content: space-between;
     align-items: center;
     margin-top: 8px;
-    padding: 0 2px;
+    padding: 0 4px 0 2px;
+    min-height: 28px;
   }
   .left,
   .right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
     min-width: 0;
   }
   .status {
-    font-size: 12.5px;
-    color: var(--text-4);
+    font-size: var(--fs-footnote);
+    color: var(--text-3);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .model,
   .effort {
-    font-size: 14px;
+    font-size: var(--fs-body);
     color: var(--text-2);
-    padding: 3px 6px;
+    padding: 3px 7px;
     border-radius: 6px;
     white-space: nowrap;
   }
@@ -469,6 +514,7 @@
   .ring {
     display: grid;
     place-items: center;
-    width: 22px;
+    width: 24px;
+    height: 24px;
   }
 </style>

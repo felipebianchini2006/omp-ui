@@ -62,7 +62,7 @@
                 {:else if store.isUnread(s)}
                   <span class="unread"></span>
                 {:else}
-                  <Icon name="circle" size={14} />
+                  <Icon name="circle" size={13} />
                 {/if}
               </span>
               <span class="title">{s.title}</span>
@@ -99,7 +99,7 @@
     min-height: 0;
   }
   .topbar {
-    height: 52px;
+    height: 50px;
     flex: none;
     display: flex;
     align-items: center;
@@ -111,16 +111,18 @@
     height: 100%;
   }
   .search {
-    margin: 2px 10px 6px;
-    height: 34px;
+    margin: 0 8px 4px;
+    height: 32px;
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 0 10px;
     border-radius: 8px;
     background: var(--bg-input);
-    border: 1px solid var(--border-soft);
     color: var(--text-3);
+  }
+  .search:focus-within {
+    box-shadow: inset 0 0 0 1px var(--border);
   }
   .search input {
     flex: 1;
@@ -128,7 +130,7 @@
     border: 0;
     outline: 0;
     background: none;
-    font-size: 14px;
+    font-size: var(--fs-body);
     color: var(--text);
   }
   .search input::placeholder {
@@ -136,13 +138,13 @@
   }
   .nav {
     margin: 0 8px;
-    height: 34px;
+    height: 32px;
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 0 10px;
     border-radius: 8px;
-    font-size: 14.5px;
+    font-size: var(--fs-body);
     color: var(--text);
   }
   .nav:hover {
@@ -154,26 +156,26 @@
   .projects {
     flex: 1;
     overflow-y: auto;
-    padding: 14px 8px 12px;
+    padding: 18px 8px 12px;
   }
   .project {
-    margin-bottom: 10px;
+    margin-bottom: 6px;
   }
   .project-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 2px 0 4px;
-    height: 32px;
+    height: 30px;
   }
   .project-name {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
-    font-size: 13.5px;
+    font-size: 13px;
     color: var(--text-3);
-    padding: 4px 4px;
+    padding: 3px 6px;
     border-radius: 6px;
   }
   .project-name span:first-child {
@@ -186,7 +188,7 @@
   }
   .chev {
     display: inline-flex;
-    transition: transform 0.12s ease;
+    transition: transform 0.12s ease, opacity 0.12s;
   }
   .chev.open {
     transform: rotate(90deg);
@@ -195,21 +197,22 @@
   .project-name:hover .chev {
     opacity: 1;
   }
-  .icon-btn.small {
+  .project-head .icon-btn.small {
     width: 24px;
     height: 24px;
+    opacity: 0.85;
   }
   .session {
     width: 100%;
-    height: 32px;
+    height: 30px;
     display: flex;
     align-items: center;
     gap: 9px;
-    padding: 0 8px;
+    padding: 0 8px 0 10px;
     border-radius: 8px;
     text-align: left;
     color: var(--text-2);
-    font-size: 14px;
+    font-size: var(--fs-body);
   }
   .session:hover {
     background: var(--bg-hover);
@@ -220,35 +223,35 @@
     color: var(--text);
   }
   .dot {
-    width: 16px;
+    width: 14px;
     display: grid;
     place-items: center;
     color: var(--text-4);
     flex: none;
   }
   .unread {
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--blue);
   }
   .title {
     overflow: hidden;
     white-space: nowrap;
-    text-overflow: ellipsis;
-    mask-image: linear-gradient(to right, #000 85%, transparent);
+    text-overflow: clip;
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
   }
   .more {
-    font-size: 12.5px;
-    color: var(--text-4);
-    padding: 4px 10px 4px 33px;
+    font-size: var(--fs-footnote);
+    color: var(--text-3);
+    padding: 5px 10px 5px 33px;
   }
   .more:hover {
-    color: var(--text-2);
+    color: var(--text);
   }
   .empty {
-    color: var(--text-4);
-    font-size: 13px;
+    color: var(--text-3);
+    font-size: var(--fs-footnote);
     padding: 8px 12px;
   }
   .footer {
@@ -256,24 +259,23 @@
     flex: none;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 0 14px;
-    border-top: 1px solid var(--border-soft);
-    font-size: 14px;
+    gap: 9px;
+    padding: 0 16px;
+    font-size: var(--fs-body);
   }
   .avatar {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    background: var(--bg-strong);
+    background: var(--bg-chip);
     display: grid;
     place-items: center;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: var(--wght-medium);
     color: var(--text-2);
   }
   .ver {
-    color: var(--text-4);
-    font-size: 12.5px;
+    color: var(--text-3);
+    font-size: var(--fs-footnote);
   }
 </style>

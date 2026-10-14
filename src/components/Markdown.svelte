@@ -44,8 +44,8 @@
 
 <style>
   .md {
-    font-size: 15.5px;
-    line-height: 1.65;
+    font-size: var(--fs-prose);
+    line-height: 1.6;
     color: var(--text);
     overflow-wrap: anywhere;
   }
@@ -59,9 +59,9 @@
   .md :global(h2),
   .md :global(h3),
   .md :global(h4) {
-    font-weight: 600;
-    line-height: 1.3;
-    margin: 1.2em 0 0.5em;
+    font-weight: 560;
+    line-height: 1.35;
+    margin: 1.3em 0 0.5em;
   }
   .md :global(h1) {
     font-size: 1.35em;
@@ -88,21 +88,22 @@
     text-decoration: underline;
   }
   .md :global(strong) {
-    font-weight: 600;
+    font-weight: 560;
   }
   .md :global(:not(pre) > code) {
     font-family: var(--mono);
-    font-size: 0.86em;
-    background: var(--bg-bubble);
+    font-size: 0.85em;
+    background: var(--alpha-1);
     border: 1px solid var(--border-soft);
     border-radius: 5px;
-    padding: 0.1em 0.35em;
+    padding: 0.08em 0.35em;
+    color: var(--text);
   }
   .md :global(.code) {
     margin: 0.4em 0 0.9em;
     border: 1px solid var(--border-soft);
     border-radius: 10px;
-    background: var(--bg-code);
+    background: var(--bg-raised);
     overflow: hidden;
   }
   .md :global(.code-head) {
@@ -110,9 +111,10 @@
     justify-content: space-between;
     align-items: center;
     padding: 6px 12px;
-    font-size: 12px;
-    color: var(--text-4);
+    font-size: var(--fs-caption);
+    color: var(--text-3);
     font-family: var(--mono);
+    border-bottom: 1px solid var(--border-soft);
   }
   .md :global(.copy) {
     font-family: var(--font);
@@ -124,10 +126,10 @@
   }
   .md :global(pre) {
     margin: 0;
-    padding: 4px 14px 12px;
+    padding: 10px 14px 12px;
     overflow-x: auto;
     font-family: var(--mono);
-    font-size: 13px;
+    font-size: var(--fs-code);
     line-height: 1.55;
   }
   .md :global(blockquote) {
@@ -150,8 +152,8 @@
     text-align: left;
   }
   .md :global(th) {
-    background: var(--bg-bubble);
-    font-weight: 600;
+    background: var(--alpha-1);
+    font-weight: 560;
   }
   .md :global(hr) {
     border: 0;

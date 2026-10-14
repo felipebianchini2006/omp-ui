@@ -100,15 +100,15 @@
     padding-left: 8px;
   }
   .htitle {
-    font-size: 14.5px;
+    font-size: var(--fs-body);
     color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .hpath {
-    font-size: 12.5px;
-    color: var(--text-4);
+    font-size: var(--fs-footnote);
+    color: var(--text-3);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -127,9 +127,9 @@
   .draft-hint {
     flex: 1 1 42%;
     text-align: center;
-    font-size: 12.5px;
+    font-size: var(--fs-footnote);
     color: var(--text-4);
-    padding-top: 18px;
+    padding-top: 16px;
   }
   .draft-hint code {
     font-family: var(--mono);
@@ -137,7 +137,18 @@
   }
   .dock {
     flex: none;
-    padding: 4px 32px 22px;
+    padding: 0 28px 18px;
+    position: relative;
+  }
+  .dock::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -28px;
+    height: 28px;
+    background: linear-gradient(to bottom, transparent, var(--bg-main));
+    pointer-events: none;
   }
   .boot-error {
     margin: 40px auto;

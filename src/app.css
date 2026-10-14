@@ -1,51 +1,67 @@
-/* Tokens amostrados da interface do Claude (aba Código, tema escuro). */
+/* Tokens do design system do Claude (aba Código, cds), tema escuro. */
 :root {
   color-scheme: dark;
-  --bg-sidebar: #111111;
-  --bg-main: #151515;
-  --bg-input: #1d1d1d;
-  --bg-composer: #1f1f1f;
-  --bg-hover: #222221;
-  --bg-active: #2a2a29;
-  --bg-strong: #363636;
+  --bg-sidebar: #111111; /* gray-870 */
+  --bg-main: #151515; /* gray-850, surface-1 */
+  --bg-raised: #1a1a19; /* gray-830, surface-2 */
+  --bg-menu: #20201f; /* gray-800, surface-3 */
+  --bg-composer: #1e1e1d; /* gray-810 */
   --bg-bubble: #262625;
-  --bg-code: #1b1b1a;
-  --bg-chip: #232322;
-  --border: #2a2a28;
-  --border-soft: #222220;
-  --text: #ecebe8;
-  --text-2: #c3c2bf;
-  --text-3: #8f8e8a;
-  --text-4: #6b6a67;
-  --accent: #d97757;
-  --accent-soft: rgba(217, 119, 87, 0.16);
-  --blue: #7aa7ff;
-  --danger: #e5675a;
-  --ok: #71b37c;
-  --radius: 10px;
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
-  --mono: "SF Mono", ui-monospace, Menlo, "JetBrains Mono", monospace;
+  --bg-code: #1a1a19;
+  --bg-chip: #2c2c2a; /* gray-750 */
+  --alpha-1: rgba(255, 255, 255, 0.05);
+  --alpha-2: rgba(255, 255, 255, 0.1);
+  --alpha-3: rgba(255, 255, 255, 0.2);
+  --bg-input: var(--alpha-1);
+  --bg-hover: rgba(255, 255, 255, 0.075);
+  --bg-active: rgba(255, 255, 255, 0.15);
+  --border: var(--alpha-2);
+  --border-soft: rgba(255, 255, 255, 0.06);
+  --border-strong: var(--alpha-3);
+  --text: #f0efec; /* gray-50 */
+  --text-2: #c3c2b7; /* gray-200 */
+  --text-3: #97958d; /* gray-350 */
+  --text-4: #6d6b67; /* gray-500 */
+  --accent: #d97757; /* clay */
+  --blue: #7cb4f0;
+  --danger: #f07a6e;
+  --ok: #6fbf73;
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.2);
+  --wght: 380;
+  --wght-medium: 470;
+  --font: "anthropic-sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --mono: "anthropic-mono", "SF Mono", ui-monospace, Menlo, monospace;
+  --fs-caption: 11.5px;
+  --fs-footnote: 12.5px;
+  --fs-body: 14px;
+  --fs-prose: 15px;
+  --fs-code: 12.5px;
 }
 
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     color-scheme: light;
-    --bg-sidebar: #f3f2ee;
-    --bg-main: #faf9f6;
-    --bg-input: #ebeae5;
+    --bg-sidebar: #f6f6f4;
+    --bg-main: #fcfcfb;
+    --bg-raised: #ffffff;
+    --bg-menu: #ffffff;
     --bg-composer: #ffffff;
-    --bg-hover: #e9e8e3;
-    --bg-active: #e2e1db;
-    --bg-strong: #dddcd5;
-    --bg-bubble: #efeee9;
-    --bg-code: #f1f0eb;
-    --bg-chip: #efeee9;
-    --border: #dedcd5;
-    --border-soft: #e7e5df;
-    --text: #1f1e1c;
-    --text-2: #3d3c39;
-    --text-3: #75736e;
-    --text-4: #9a9893;
+    --bg-bubble: #f0efec;
+    --bg-code: #f6f6f4;
+    --bg-chip: #f0efec;
+    --alpha-1: rgba(11, 11, 11, 0.05);
+    --alpha-2: rgba(11, 11, 11, 0.1);
+    --alpha-3: rgba(11, 11, 11, 0.2);
+    --bg-hover: rgba(11, 11, 11, 0.05);
+    --bg-active: rgba(11, 11, 11, 0.1);
+    --border-soft: rgba(11, 11, 11, 0.07);
+    --text: #20201f;
+    --text-2: #52514e;
+    --text-3: #7b7974;
+    --text-4: #a5a49a;
+    --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+    --wght: 420;
+    --wght-medium: 520;
   }
 }
 
@@ -64,9 +80,11 @@ body {
   background: var(--bg-main);
   color: var(--text);
   font-family: var(--font);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: var(--fs-body);
+  font-weight: var(--wght);
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "dlig" 0;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
@@ -86,6 +104,12 @@ textarea,
 input {
   font: inherit;
   color: inherit;
+}
+
+code,
+pre,
+kbd {
+  font-weight: 400;
 }
 
 ::selection {
@@ -120,7 +144,7 @@ input {
   place-items: center;
   width: 28px;
   height: 28px;
-  border-radius: 7px;
+  border-radius: 6px;
   color: var(--text-3);
 }
 .icon-btn:hover:not(:disabled) {
@@ -152,11 +176,11 @@ input {
   min-width: 220px;
   max-height: 340px;
   overflow: auto;
-  background: var(--bg-composer);
+  background: var(--bg-menu);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 5px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: var(--shadow-pop);
 }
 .menu-item {
   display: flex;
@@ -164,10 +188,11 @@ input {
   gap: 9px;
   width: 100%;
   text-align: left;
-  padding: 6px 9px;
-  border-radius: 7px;
+  padding: 6px 8px;
+  border-radius: 6px;
   font-size: 13.5px;
   color: var(--text-2);
+  min-height: 30px;
 }
 .menu-item:hover,
 .menu-item.on {
@@ -180,7 +205,7 @@ input {
   margin: 4px 2px;
 }
 .menu-label {
-  font-size: 11.5px;
-  color: var(--text-4);
-  padding: 6px 9px 3px;
+  font-size: var(--fs-caption);
+  color: var(--text-3);
+  padding: 6px 8px 4px;
 }

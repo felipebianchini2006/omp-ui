@@ -140,6 +140,7 @@ class Store {
   }
 
   setDraftCwd(c: Conversation, cwd: string) {
+    if (c.cwd !== cwd) c.stop();
     c.cwd = cwd;
     save(LAST_CWD, cwd);
   }

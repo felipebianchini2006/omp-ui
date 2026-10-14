@@ -70,6 +70,15 @@ let lastKey = "";
 export const startAgent = async (key: string) => {
   lastKey = key;
   out(key, { type: "ready" });
+  out(key, {
+    type: "available_commands_update",
+    commands: [
+      { name: "model", description: "Show current model selection" },
+      { name: "fast", description: "Toggle fast mode", input: { hint: "[on|ultra|off|status]" }, subcommands: [{ name: "on", description: "Enable fast mode" }, { name: "off", description: "Disable fast mode" }, { name: "status", description: "Show fast mode status" }] },
+      { name: "compact", description: "Compact the conversation" },
+      { name: "usage", description: "Show usage limits" },
+    ],
+  });
 };
 
 // Reproduz linhas reais capturadas de `omp --mode rpc` na conversa ativa (teste manual).
@@ -96,6 +105,11 @@ export const sendAgent = async (key: string, line: string) => {
     });
     return;
   }
+  if (cmd.type === "prompt" && cmd.message.startsWith("/")) {
+    out(key, { type: "command_output", text: `Saída simulada de ${cmd.message}.\nFast mode is off.` });
+    out(key, { type: "response", id: cmd.id, success: true, data: { agentInvoked: false } });
+    return;
+  }
   out(key, { type: "response", id: cmd.id, success: true });
   if (cmd.type !== "prompt") return;
   out(key, { type: "agent_start" });
@@ -111,4 +125,16 @@ export const sendAgent = async (key: string, line: string) => {
       emit(key, JSON.stringify({ type: "session_settled" }));
     }
   }, 40);
+};
+
+// No navegador (vite) as fontes vêm direto do Claude.app via /@fs.
+export const claudeFont = async (kind: string): Promise<ArrayBuffer> => {
+  const base = "/@fs/Applications/Claude.app/Contents/Resources";
+  const url =
+    kind === "mono"
+      ? `${base}/ion-dist/assets/v1/c5dbe0935-CQcSkHaI.woff2`
+      : `${base}/fonts/AnthropicSans-${kind === "sans" ? "Romans" : "Italics"}-Variable-25x258.ttf`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(url);
+  return r.arrayBuffer();
 };

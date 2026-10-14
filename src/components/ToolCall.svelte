@@ -81,9 +81,9 @@
     align-items: center;
     gap: 8px;
     max-width: 100%;
-    padding: 4px 8px 4px 2px;
-    border-radius: 7px;
-    font-size: 14px;
+    padding: 3px 6px 3px 2px;
+    border-radius: 6px;
+    font-size: var(--fs-body);
     color: var(--text-3);
     text-align: left;
   }
@@ -101,12 +101,15 @@
   }
   .verb {
     flex: none;
+    color: var(--text-3);
+  }
+  .head:hover .verb {
     color: var(--text-2);
   }
   .target {
     font-family: var(--mono);
-    font-size: 12.5px;
-    color: var(--text-3);
+    font-size: var(--fs-code);
+    color: var(--text-2);
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -114,7 +117,7 @@
   }
   .intent {
     color: var(--text-4);
-    font-size: 13px;
+    font-size: var(--fs-footnote);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -134,21 +137,21 @@
     transform: rotate(90deg);
   }
   .body {
-    margin: 4px 0 8px 28px;
+    margin: 4px 0 8px 26px;
     border: 1px solid var(--border-soft);
     border-radius: 10px;
-    background: var(--bg-code);
+    background: var(--bg-raised);
     padding: 8px 12px 10px;
   }
   .label {
-    font-size: 11.5px;
-    color: var(--text-4);
+    font-size: var(--fs-caption);
+    color: var(--text-3);
     margin: 4px 0 4px;
   }
   pre {
     margin: 0 0 6px;
     font-family: var(--mono);
-    font-size: 12.5px;
+    font-size: var(--fs-code);
     line-height: 1.5;
     color: var(--text-2);
     white-space: pre-wrap;

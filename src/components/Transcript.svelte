@@ -1,22 +1,70 @@
 <script lang="ts">
   import Markdown from "./Markdown.svelte";
   import ToolCall from "./ToolCall.svelte";
-  import { textOf, type Conversation, type Msg } from "../lib/conversation.svelte";
+  import ToolGroup from "./ToolGroup.svelte";
+  import { textOf, type Conversation, type GroupEntry, type Msg } from "../lib/conversation.svelte";
 
   let { conv }: { conv: Conversation } = $props();
 
   let scroller: HTMLDivElement | undefined = $state();
   let stick = true;
-  let openThinking = $state<Record<string, boolean>>({});
 
-  // Só mensagens que fazem sentido mostrar: usuário e assistente.
-  const items = $derived(conv.messages.filter(({ msg }) => msg.role === "user" || msg.role === "assistant"));
+  type Item =
+    | { kind: "user"; id: string; text: string; images: any[] }
+    | { kind: "text"; id: string; text: string }
+    | { kind: "tools"; id: string; entries: GroupEntry[] }
+    | { kind: "command"; id: string; text: string; level?: string }
+    | { kind: "error"; id: string; text: string }
+    | { kind: "note"; id: string; text: string };
+
+  // Achata as mensagens em blocos de exibição. Ferramentas seguidas (e o raciocínio entre elas)
+  // formam um grupo; texto do assistente ou nova mensagem do usuário fecham o grupo.
+  const items = $derived.by(() => {
+    const out: Item[] = [];
+    let group: Extract<Item, { kind: "tools" }> | null = null;
+    let pendingThoughts: GroupEntry[] = [];
+    for (const { id, msg } of conv.messages) {
+      if (msg.role === "user") {
+        group = null;
+        pendingThoughts = [];
+        out.push({ kind: "user", id, text: textOf(msg.content).trim(), images: imagesOf(msg) });
+      } else if (msg.role === "command") {
+        group = null;
+        out.push({ kind: "command", id, text: String(msg.content ?? ""), level: msg.level });
+      } else if (msg.role === "assistant") {
+        const blocks = Array.isArray(msg.content) ? msg.content : [];
+        blocks.forEach((b: any, bi: number) => {
+          if (b.type === "toolCall") {
+            if (!group) {
+              group = { kind: "tools", id: `${id}:${bi}`, entries: [] };
+              out.push(group);
+            }
+            group.entries.push(...pendingThoughts, { kind: "tool", call: b });
+            pendingThoughts = [];
+          } else if (b.type === "thinking" && b.thinking?.trim()) {
+            pendingThoughts.push({ kind: "thinking", text: b.thinking.trim() });
+          } else if (b.type === "text" && b.text?.trim()) {
+            group = null;
+            pendingThoughts = [];
+            out.push({ kind: "text", id: `${id}:${bi}`, text: b.text });
+          }
+        });
+        if (msg.stopReason === "error" && msg.errorMessage) {
+          group = null;
+          out.push({ kind: "error", id: `${id}:err`, text: msg.errorMessage });
+        } else if (msg.stopReason === "aborted") {
+          group = null;
+          out.push({ kind: "note", id: `${id}:abort`, text: "Interrompido" });
+        }
+      }
+    }
+    return out;
+  });
+
   const last = $derived(items[items.length - 1]);
+  const showWorking = $derived(conv.busy && (!last || last.kind === "user" || !!conv.pendingPrompt));
 
-  function userText(m: Msg) {
-    return textOf(m.content).trim();
-  }
-  function userImages(m: Msg): any[] {
+  function imagesOf(m: Msg): any[] {
     return Array.isArray(m.content) ? m.content.filter((c: any) => c.type === "image") : [];
   }
 
@@ -32,47 +80,34 @@
     conv.pendingPrompt;
     if (stick && scroller) requestAnimationFrame(() => scroller && (scroller.scrollTop = scroller.scrollHeight));
   });
-
-  $effect(() => {
-    conv.key;
-    stick = true;
-  });
 </script>
 
 <div class="scroller" bind:this={scroller} onscroll={onScroll}>
   <div class="column">
-    {#each items as { id, msg } (id)}
-      {#if msg.role === "user"}
-        {@const t = userText(msg)}
+    {#each items as item (item.id)}
+      {#if item.kind === "user"}
         <div class="user">
-          {#each userImages(msg) as img}
+          {#each item.images as img}
             <img class="uimg" src="data:{img.mimeType};base64,{img.data}" alt="" />
           {/each}
-          {#if t}<div class="bubble selectable">{t}</div>{/if}
+          {#if item.text}<div class="bubble selectable">{item.text}</div>{/if}
         </div>
+      {:else if item.kind === "text"}
+        <div class="prose"><Markdown text={item.text} /></div>
+      {:else if item.kind === "tools"}
+        {@const tools = item.entries.filter((e) => e.kind === "tool")}
+        {#if tools.length === 1 && item.entries.length === 1}
+          {@const call = (tools[0] as any).call}
+          <ToolCall {call} result={conv.results[call.id]} run={conv.runs[call.id]} live={conv.busy} />
+        {:else}
+          <ToolGroup entries={item.entries} {conv} live={conv.busy} />
+        {/if}
+      {:else if item.kind === "command"}
+        <div class="command selectable" class:warn={item.level === "warning"} class:err={item.level === "error"}>{item.text}</div>
+      {:else if item.kind === "error"}
+        <div class="error selectable">{item.text}</div>
       {:else}
-        <div class="assistant">
-          {#each Array.isArray(msg.content) ? msg.content : [] as block, bi}
-            {#if block.type === "text" && block.text?.trim()}
-              <Markdown text={block.text} />
-            {:else if block.type === "thinking" && block.thinking?.trim()}
-              {@const k = `${id}:${bi}`}
-              <button class="thinking" onclick={() => (openThinking[k] = !openThinking[k])}>
-                {openThinking[k] ? "Ocultar raciocínio" : "Raciocínio"}
-              </button>
-              {#if openThinking[k]}
-                <div class="thinking-body selectable">{block.thinking}</div>
-              {/if}
-            {:else if block.type === "toolCall"}
-              <ToolCall call={block} result={conv.results[block.id]} run={conv.runs[block.id]} live={conv.busy} />
-            {/if}
-          {/each}
-          {#if msg.stopReason === "error" && msg.errorMessage}
-            <div class="error selectable">{msg.errorMessage}</div>
-          {:else if msg.stopReason === "aborted"}
-            <div class="note">Interrompido</div>
-          {/if}
-        </div>
+        <div class="note">{item.text}</div>
       {/if}
     {/each}
 
@@ -80,10 +115,11 @@
       <div class="user"><div class="bubble pending selectable">{conv.pendingPrompt}</div></div>
     {/if}
 
-    {#if conv.busy && (!last || last.msg.role === "user" || conv.pendingPrompt)}
-      <div class="working"><span class="pulse"></span> Trabalhando…</div>
-    {:else if conv.busy}
-      <div class="working tail"><span class="pulse"></span></div>
+    {#if conv.busy}
+      <div class="working" class:tail={!showWorking}>
+        <span class="spark" aria-hidden="true"></span>
+        {#if showWorking}<span class="shimmer">Trabalhando…</span>{/if}
+      </div>
     {/if}
 
     {#if conv.error}
@@ -99,29 +135,33 @@
     min-height: 0;
   }
   .column {
-    max-width: 760px;
+    max-width: 768px;
     margin: 0 auto;
-    padding: 24px 24px 32px;
+    padding: 20px 28px 28px;
   }
   .user {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     gap: 6px;
-    margin: 18px 0 20px;
+    margin: 22px 0 18px;
+  }
+  .user:first-child {
+    margin-top: 6px;
   }
   .bubble {
-    max-width: 85%;
+    max-width: 82%;
     background: var(--bg-bubble);
     border-radius: 14px;
-    padding: 9px 14px;
-    font-size: 15.5px;
+    padding: 8px 14px;
+    font-size: var(--fs-prose);
     line-height: 1.55;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    color: var(--text);
   }
   .bubble.pending {
-    opacity: 0.6;
+    opacity: 0.55;
   }
   .uimg {
     max-width: 220px;
@@ -129,72 +169,79 @@
     border-radius: 10px;
     border: 1px solid var(--border);
   }
-  .assistant {
-    margin: 0 0 14px;
+  .prose {
+    margin: 10px 0 12px;
   }
-  .assistant > :global(.md) {
-    margin: 6px 0 10px;
-  }
-  .thinking {
-    font-size: 13.5px;
-    color: var(--text-4);
-    padding: 2px 0;
-    margin: 2px 0;
-  }
-  .thinking:hover {
+  .command {
+    margin: 6px 0 12px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border-soft);
+    font-family: var(--mono);
+    font-size: var(--fs-code);
+    line-height: 1.55;
     color: var(--text-2);
-  }
-  .thinking-body {
-    font-size: 13.5px;
-    color: var(--text-3);
     white-space: pre-wrap;
-    border-left: 2px solid var(--border);
-    padding: 2px 0 2px 12px;
-    margin: 4px 0 10px;
+    overflow-wrap: anywhere;
+  }
+  .command.warn {
+    color: #e8b85a;
+  }
+  .command.err {
+    color: var(--danger);
   }
   .error {
     margin: 8px 0;
     padding: 10px 12px;
     border-radius: 10px;
-    background: rgba(229, 103, 90, 0.1);
-    border: 1px solid rgba(229, 103, 90, 0.3);
+    background: rgba(240, 122, 110, 0.08);
+    border: 1px solid rgba(240, 122, 110, 0.25);
     color: var(--danger);
-    font-size: 13.5px;
+    font-size: var(--fs-footnote);
     white-space: pre-wrap;
     font-family: var(--mono);
   }
   .note {
-    font-size: 13px;
-    color: var(--text-4);
+    font-size: var(--fs-footnote);
+    color: var(--text-3);
     margin: 4px 0;
   }
   .working {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 9px;
     color: var(--text-3);
-    font-size: 14px;
-    margin: 10px 0;
+    font-size: var(--fs-body);
+    margin: 12px 0 4px 2px;
   }
   .working.tail {
-    margin-top: 4px;
+    margin-top: 6px;
   }
-  .pulse {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
+  /* Asterisco girando, no lugar do "spark" do Claude. */
+  .spark {
+    width: 13px;
+    height: 13px;
     background: var(--accent);
-    animation: pulse 1.2s ease-in-out infinite;
+    clip-path: polygon(
+      50% 0%, 58% 38%, 93% 18%, 64% 46%, 100% 55%, 61% 60%, 80% 95%, 52% 65%, 35% 100%, 40% 62%, 4% 78%, 34% 52%, 0% 35%, 38% 40%, 22% 6%
+    );
+    animation: spin 2.4s linear infinite;
   }
-  @keyframes pulse {
-    0%,
-    100% {
-      opacity: 0.35;
-      transform: scale(0.85);
+  .shimmer {
+    background: linear-gradient(90deg, var(--text-3) 0%, var(--text) 50%, var(--text-3) 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 2s linear infinite;
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 100% 0;
     }
-    50% {
-      opacity: 1;
-      transform: scale(1);
+    to {
+      background-position: -100% 0;
     }
   }
 </style>
